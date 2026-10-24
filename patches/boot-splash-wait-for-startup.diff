@@ -1,0 +1,51 @@
+﻿diff --git a/vendor/boot-splash/panel.js b/vendor/boot-splash/panel.js
+
+--- a/vendor/boot-splash/panel.js (上游原版)
++++ b/vendor/boot-splash/panel.js (本仓库版本)
+@@ -409,10 +409,34 @@
+ 
+   /* ------------------------------------------------------------------ 启动 */
+ 
+-  build()
+-  bind()
+-  setHint('正在准备…')
+-  start()
++  /* 与 dsh-startup-screen 串两幕：等它的浮层收场再开始（没装它就照常立刻开始）。
++     只用它公开的约定：根元素 #dsh-startup-root 出现 → 等它加 dsu-handoff / dsu-gone
++     或直接从 DOM 里消失；"它还没挂上来"最多等 4 秒。 */
++  function deferToStartup(go) {
++    var t0 = Date.now(), seen = false
++    var timer = globalThis.setInterval(function () {
++      var el = null
++      try { el = document.getElementById('dsh-startup-root') } catch (e) { el = null }
++      if (el) {
++        seen = true
++        var leaving = false
++        try {
++          leaving = !!(el.classList && (el.classList.contains('dsu-handoff') || el.classList.contains('dsu-gone')))
++        } catch (e) { leaving = false }
++        if (leaving) { stop(); return }
++        return
++      }
++      if (seen) { stop(); return }
++      if (Date.now() - t0 > 4000) { stop() }
++    }, 100)
++    function stop() { globalThis.clearInterval(timer); go() }
++  }
++
++  function bootNow() {
++    build()
++    bind()
++    setHint('正在准备…')
++    start()
+ 
+   // 上界一：到点提示可点击（不自动进，避免盖住还在渲染的界面）
+   globalThis.setTimeout(function () {
+@@ -422,4 +446,7 @@
+   globalThis.setTimeout(function () {
+     if (!state.leaving) { note('到达绝对上限，强制进入'); enter() }
+   }, ABSOLUTE_CAP)
++  }
++
++  deferToStartup(bootNow)
+ }())
