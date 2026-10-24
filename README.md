@@ -1,0 +1,2 @@
+# deepseek
+opening animation
